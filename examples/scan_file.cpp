@@ -57,10 +57,10 @@ DFICallbackResult __cdecl ScanCompletion(void* user_data, const DFIScanInfoPost*
     return DFICallbackResult::Success;
 }
 
-DFICallbackResult __cdecl ScanError(void* user_data, DFIErrorCode error) {
+DFICallbackResult __cdecl ScanError(void* user_data, DFIScanResult result) {
     scanCount--;
 
-    std::cout << "Error: " << magic_enum::enum_name(error) << std::endl;
+    std::cout << "Error: " << magic_enum::enum_name(result) << std::endl;
     return DFICallbackResult::Success;
 }
 
@@ -127,7 +127,7 @@ void ScanFile(HMODULE ai, std::string& sample) {
         telemetry = std::vector<char>(bufferSize, 0);
         code = lazy_dfi_get_telemetry(telemetry.data(), bufferSize);
         bufferSize *= 2;
-    } while (code == DFIErrorCode::MinimumFileSizeError);
+    } while (code == DFIErrorCode::InvalidParameter);
     if (code == DFIErrorCode::Success) {
         std::cout << "Scan telemetry: " << std::endl
                   << telemetry.data() << std::endl;
