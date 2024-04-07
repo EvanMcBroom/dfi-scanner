@@ -1,6 +1,7 @@
 // The C API for Deep File Inspection (DPI) as determined
 // by auditing the SentinelStaticAI.dll library.
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -171,8 +172,9 @@ namespace DfiScanner {
     using Build = std::string;
     class Dfi;
     class Exception;
+    class Scan;
     class ScanArguments;
-    using ErrorCallback = bool(__cdecl*)(void* userData, DFIErrorCode error);
+    using ErrorCallback = bool(__cdecl*)(void* userData, DFIScanResult result);
     using Logger = void(*)(uint32_t level, const std::wstring& message);
     using PostCallback = bool(__cdecl*)(void* userData, const Dfi& info);
     using PreCallback = bool(__cdecl*)(void* userData, const Dfi& info);
@@ -210,7 +212,34 @@ namespace DfiScanner {
         std::string message;
     };
 
+    class Scan {
+    public:
+        Scan(const std::vector<char>& data, void* userData, PreCallback onPreScanError, PreCallback onPreScanCompletion, PostCallback onScanCompletion, ErrorCallback onScanError, const std::shared_ptr<ScanArguments>& args);
+
+    private:
+        struct WrappedUserData {
+            Scan* scanThis;
+            void* userData;
+        };
+
+        std::shared_ptr<ScanArguments> args;
+        PreCallback userPreScanCompletion;
+        PreCallback userPreScanError;
+        ErrorCallback userScanError;
+        PostCallback userScanCompletion;
+        WrappedUserData wrappedUserData;
+
+        // These return -1 on falure. That falure value was guessed
+        // and likely should be changed to something else.
+        static DFICallbackResult __cdecl ToCppPreScanCompletion(void* userData, const DFIScanInfoPre* info);
+        static DFICallbackResult __cdecl ToCppPreScanError(void* userData, const DFIScanInfoPre* info);
+        static DFICallbackResult __cdecl ToCppScanCompletion(void* userData, const DFIScanInfoPost* info);
+        static DFICallbackResult __cdecl ToCppScanError(void* userData, DFIScanResult result);
+    };
+
     class ScanArguments {
+        friend class Scan;
+
     public:
         ScanArguments();
         ~ScanArguments();
@@ -221,6 +250,9 @@ namespace DfiScanner {
         void SetScanArchives(bool enable);
         void SetScanEverything(bool enable);
         void SetStopScanThreshold(uint32_t stopScanThreshold);
+
+    protected:
+        DFIScanArguments* Ptr();
 
     private:
         DFIScanArguments* args{ nullptr };
@@ -237,6 +269,5 @@ namespace DfiScanner {
     void Init(Logger logger);
     bool LoadAi(const std::wstring& path);
     void ResetCustomYaraRules();
-    void Scan(const std::vector<char>& data, void* userData, PreCallback onPreScanError, PreCallback onPreScanCompletion, PostCallback onScanCompletion, ErrorCallback onScanError, const ScanArguments& args);
     void SetCustomYaraRules(const std::vector<char>& yarc);
 }

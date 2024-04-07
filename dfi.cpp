@@ -41,8 +41,8 @@ namespace {
     decltype(dfi_set_scan_everything)* lazy_dfi_set_scan_everything;
     decltype(dfi_set_stop_scan_threshold)* lazy_dfi_set_stop_scan_threshold;
     DfiScanner::Logger userLogger{ nullptr };
-    
-    void CppLogger(uint32_t level, wchar_t* message) {
+
+    void ToCppLogger(uint32_t level, wchar_t* message) {
         if (userLogger) {
             userLogger(level, message);
         }
@@ -192,6 +192,11 @@ namespace DfiScanner {
 
     void ScanArguments::SetIndicators(const std::string& indicators) {
         userIndicators = std::vector<char>(indicators.begin(), indicators.end());
+        // Make sure the indicators buffer is at least 512 bytes which
+        // is the required amount for the C API
+        if (userIndicators.size() < 512) {
+            userIndicators.resize(512, '\0');
+        }
         auto error{ lazy_dfi_set_indicators(args, userIndicators.size(), userIndicators.data()) };
         if (error != DFIErrorCode::Success) {
             throw Exception(error);
@@ -232,6 +237,47 @@ namespace DfiScanner {
         if (error != DFIErrorCode::Success) {
             throw Exception(error);
         }
+    }
+
+    DFIScanArguments* ScanArguments::Ptr() {
+        return args;
+    }
+
+    Scan::Scan(const std::vector<char>& data, void* userData, PreCallback onPreScanError, PreCallback onPreScanCompletion, PostCallback onScanCompletion, ErrorCallback onScanError, const std::shared_ptr<ScanArguments>& args)
+        : userPreScanCompletion(onPreScanCompletion) , userPreScanError(onPreScanError), userScanCompletion(onScanCompletion), userScanError(onScanError), args(args) {
+        if (!ai) {
+            throw Exception("AI not loaded.");
+        }
+        wrappedUserData.scanThis = this;
+        wrappedUserData.userData = userData;
+        lazy_dfi_scan(data.data(), data.size(), userData, ToCppPreScanError, ToCppPreScanCompletion, ToCppScanCompletion, ToCppScanError, this->args->Ptr());
+    }
+
+    DFICallbackResult __cdecl Scan::ToCppPreScanCompletion(void* userData, const DFIScanInfoPre* info) {
+        auto wrappedUserData{ reinterpret_cast<WrappedUserData*>(userData) };
+        Dfi dfi((DFI**)(info));
+        auto succeeded{ wrappedUserData->scanThis->userPreScanCompletion(wrappedUserData->userData, dfi) };
+        return (succeeded) ? DFICallbackResult::Success : (DFIErrorCode)-1;
+    }
+
+    DFICallbackResult __cdecl Scan::ToCppPreScanError(void* userData, const DFIScanInfoPre* info) {
+        auto wrappedUserData{ reinterpret_cast<WrappedUserData*>(userData) };
+        Dfi dfi((DFI**)(info));
+        auto succeeded{ wrappedUserData->scanThis->userPreScanError(wrappedUserData->userData, dfi) };
+        return (succeeded) ? DFICallbackResult::Success : (DFIErrorCode)-1;
+    }
+
+    DFICallbackResult __cdecl Scan::ToCppScanCompletion(void* userData, const DFIScanInfoPre* info) {
+        auto wrappedUserData{ reinterpret_cast<WrappedUserData*>(userData) };
+        Dfi dfi((DFI**)(info));
+        auto succeeded{ wrappedUserData->scanThis->userScanCompletion(wrappedUserData->userData, dfi) };
+        return (succeeded) ? DFICallbackResult::Success : (DFIErrorCode)-1;
+    }
+
+    DFICallbackResult __cdecl Scan::ToCppScanError(void* userData, DFIScanResult result) {
+        auto wrappedUserData{ reinterpret_cast<WrappedUserData*>(userData) };
+        auto succeeded{ wrappedUserData->scanThis->userScanError(wrappedUserData->userData, result) };
+        return (succeeded) ? DFICallbackResult::Success : (DFIErrorCode)-1;
     }
 
     void Cleanup() {
@@ -327,7 +373,7 @@ namespace DfiScanner {
         if (logger) {
             userLogger = logger;
         }
-        auto error{ lazy_dfi_init(CppLogger) };
+        auto error{ lazy_dfi_init(ToCppLogger) };
         if (error != DFIErrorCode::Success) {
             throw Exception(error);
         }
@@ -339,13 +385,6 @@ namespace DfiScanner {
         }
         // API is hardcoded to return DFIErrorCode::Success
         (void)lazy_dfi_reset_custom_yara_rules();
-    }
-
-    void Scan(const std::vector<char>& data, void* userData, PreCallback onPreScanError, PreCallback onPreScanCompletion, PostCallback onScanCompletion, ErrorCallback onScanError, const ScanArguments& args) {
-        if (!ai) {
-            throw Exception("AI not loaded.");
-        }
-        throw Exception("Not implemented.");
     }
 
     void SetCustomYaraRules(const std::vector<char>& yarc) {
