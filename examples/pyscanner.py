@@ -6,10 +6,15 @@ if len(sys.argv) < 3:
     print('{} <path to SentinelStaticAI.dll> <path to file>'.format(sys.argv[0]))
     sys.exit()
 
+scanCount = 0
+
 def MyLogger(level: int, message: str) -> None:
     print("> Log({}): {}".format(level, message))
 
 def MyPreScanError(userData: str, info: pydfi.Dfi) -> bool:
+    global scanCount
+    scanCount += 1
+
     print()
     pathInArchive = info.path_in_archive
     if len(pathInArchive):
@@ -17,6 +22,9 @@ def MyPreScanError(userData: str, info: pydfi.Dfi) -> bool:
     return True
 
 def MyPreScanCompletion(userData: str, info: pydfi.Dfi) -> bool:
+    global scanCount
+    scanCount += 1
+    
     print()
     pathInArchive = info.path_in_archive
     if len(pathInArchive):
@@ -25,7 +33,12 @@ def MyPreScanCompletion(userData: str, info: pydfi.Dfi) -> bool:
     return True
 
 def MyScanCompletion(userData: str, info: pydfi.Dfi) -> bool:
-    print("Scan result!")
+    global scanCount
+    scanCount -= 1
+    
+    if (scanCount == 0):
+        print("\nScan completed!")
+        
     print("  Verdict   : {}".format(info.verdict))
     print("  Score     : {}".format("infinite" if info.score == float("inf") else info.score))
     indicators = info.indicators
@@ -37,6 +50,9 @@ def MyScanCompletion(userData: str, info: pydfi.Dfi) -> bool:
     return True
 
 def MyScanError(userData: str, result: int) -> bool:
+    global scanCount
+    scanCount -= 1
+    
     print("Error: {}".format(result))
     return True
 
