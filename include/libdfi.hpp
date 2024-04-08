@@ -1,10 +1,12 @@
 // The C API for Deep File Inspection (DPI) as determined
 // by auditing the SentinelStaticAI.dll library.
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
+
+#define DFI_EICAR "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-SENTINEL-ANTIVIRUS-TEST-FILE!$H+H*"
 
 // From extracted dv.proto
 enum class AIFileType {
@@ -145,7 +147,7 @@ using Logger = void(*)(uint32_t level, wchar_t* message);
 [[maybe_unused]] DFIErrorCode dfi_get_indicators(DFI** dfi, uint32_t* indicators_size, char** indicators); // Output buffer is string of size 512
 [[maybe_unused]] DFIErrorCode dfi_get_macro_content(DFI** dfi, uint32_t* macro_content_size, char** macro_content);
 [[maybe_unused]] DFIErrorCode dfi_get_max_features_count(uint32_t* max_features_count); // Feature size will by feature count * 8
-[[maybe_unused]] DFIErrorCode dfi_get_path_in_archive(DFI** dfi, uint32_t* path_size, char** path);
+[[maybe_unused]] DFIErrorCode dfi_get_path_in_archive(DFI** dfi, uint32_t* path_size, wchar_t** path);
 [[maybe_unused]] DFIErrorCode dfi_get_score(DFI** dfi, double* score);
 [[maybe_unused]] void dfi_get_sha1(DFI** dfi, char* sha1);
 [[maybe_unused]] void dfi_get_sha256(DFI** dfi, char* sha256);
@@ -166,108 +168,3 @@ using Logger = void(*)(uint32_t level, wchar_t* message);
 [[maybe_unused]] DFIErrorCode dfi_set_scan_archives(DFIScanArguments* args, bool enable);
 [[maybe_unused]] DFIErrorCode dfi_set_scan_everything(DFIScanArguments* args, bool enable);
 [[maybe_unused]] DFIErrorCode dfi_set_stop_scan_threshold(DFIScanArguments* args, uint32_t stop_scan_threshold);
-
-// A simple C++ API for DFI that is provided for convenience.
-namespace DfiScanner {
-    using Build = std::string;
-    class Dfi;
-    class Exception;
-    class Scan;
-    class ScanArguments;
-    using ErrorCallback = bool(__cdecl*)(void* userData, DFIScanResult result);
-    using Logger = void(*)(uint32_t level, const std::wstring& message);
-    using PostCallback = bool(__cdecl*)(void* userData, const Dfi& info);
-    using PreCallback = bool(__cdecl*)(void* userData, const Dfi& info);
-    using Version = std::string;
-
-    extern void* ai;
-
-    class Dfi {
-    public:
-        Dfi(DFI** dfi);
-        uint32_t GetDepth();
-        std::vector<char> GetFeatures();
-        std::vector<char> GetFileData();
-        AIFileType GetFileType();
-        std::string GetIndicators();
-        std::vector<char> GetMacroContent();
-        std::string GetPathInArchive();
-        double GetScore();
-        std::vector<char> GetSha1();
-        std::vector<char> GetSha256();
-        Verdict GetVerdict();
-        bool IsArchive();
-
-    private:
-        ::DFI** dfi{ nullptr };
-    };
-
-    class Exception : public std::exception {
-    public:
-        Exception(DFIErrorCode code);
-        Exception(const std::string& message);
-        char* what();
-
-    private:
-        std::string message;
-    };
-
-    class Scan {
-    public:
-        Scan(const std::vector<char>& data, void* userData, PreCallback onPreScanError, PreCallback onPreScanCompletion, PostCallback onScanCompletion, ErrorCallback onScanError, const std::shared_ptr<ScanArguments>& args);
-
-    private:
-        struct WrappedUserData {
-            Scan* scanThis;
-            void* userData;
-        };
-
-        std::shared_ptr<ScanArguments> args;
-        PreCallback userPreScanCompletion;
-        PreCallback userPreScanError;
-        ErrorCallback userScanError;
-        PostCallback userScanCompletion;
-        WrappedUserData wrappedUserData;
-
-        // These return -1 on falure. That falure value was guessed
-        // and likely should be changed to something else.
-        static DFICallbackResult __cdecl ToCppPreScanCompletion(void* userData, const DFIScanInfoPre* info);
-        static DFICallbackResult __cdecl ToCppPreScanError(void* userData, const DFIScanInfoPre* info);
-        static DFICallbackResult __cdecl ToCppScanCompletion(void* userData, const DFIScanInfoPost* info);
-        static DFICallbackResult __cdecl ToCppScanError(void* userData, DFIScanResult result);
-    };
-
-    class ScanArguments {
-        friend class Scan;
-
-    public:
-        ScanArguments();
-        ~ScanArguments();
-        void SetFeatures(const std::vector<char>& features);
-        void SetIndicators(const std::string& indicators);
-        void SetMacroContent(const std::vector<char>& macroContent);
-        void SetMaxScanDepth(uint32_t scanDepth);
-        void SetScanArchives(bool enable);
-        void SetScanEverything(bool enable);
-        void SetStopScanThreshold(uint32_t stopScanThreshold);
-
-    protected:
-        DFIScanArguments* Ptr();
-
-    private:
-        DFIScanArguments* args{ nullptr };
-        // User data must be malleable
-        std::vector<char> userMacroContent;
-        std::vector<char> userIndicators;
-        std::vector<char> userFeatures;
-    };
-
-    void Cleanup();
-    uint32_t GetMaxFeaturesCount();
-    std::string GetTelemetry();
-    std::pair<Version, Build> GetVersion();
-    void Init(Logger logger);
-    bool LoadAi(const std::wstring& path);
-    void ResetCustomYaraRules();
-    void SetCustomYaraRules(const std::vector<char>& yarc);
-}
