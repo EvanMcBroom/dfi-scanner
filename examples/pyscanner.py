@@ -70,7 +70,9 @@ data = open(sys.argv[2], "rb").read()
 pydfi.Scan(data, "", MyPreScanError, MyPreScanCompletion, MyScanCompletion, MyScanError, args)
 
 # Show telemetry for all scans that were done
-print("\nScan telemetry: {}".format(pydfi.telemetry()))
+# Done it a try block because the telemetry is not supported on old versions of DFI
+try: print("\nScan telemetry: {}".format(pydfi.telemetry()))
+except: pass
 
 # Must be called at end or else the process will hang
 pydfi.cleanup()

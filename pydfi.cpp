@@ -107,6 +107,9 @@ namespace PyDfi {
     }
 
     py::bytes Dfi::GetMacroContent() {
+        if (!lazy_dfi_get_macro_content) {
+            throw Exception("Method not supported by this version of DFI.");
+        }
         uint32_t contentSize{ 0 };
         char* content{ 0 };
         auto error{ lazy_dfi_get_macro_content(dfi, &contentSize, &content) };
@@ -216,6 +219,9 @@ namespace PyDfi {
     }
 
     void ScanArguments::SetMacroContent(const py::bytes& macroContent) {
+        if (!lazy_dfi_get_telemetry) {
+            throw Exception("Method not supported by this version of DFI.");
+        }
         std::string strMacroContent{ macroContent };
         userMacroContent = std::vector<char>(strMacroContent.begin(), strMacroContent.end());
         auto error{ lazy_dfi_set_macro_content(args, userMacroContent.size(), userMacroContent.data()) };
@@ -320,6 +326,9 @@ namespace PyDfi {
         if (!ai) {
             throw Exception("AI not loaded.");
         }
+        if (!lazy_dfi_get_telemetry) {
+            throw Exception("Method not supported by this version of DFI.");
+        }
         size_t telemetrySize{ 0x500 };
         DFIErrorCode code;
         std::vector<char> telemetry;
@@ -352,28 +361,28 @@ namespace PyDfi {
                 LAZY_LOAD_PROC(ai, dfi_get_file_data) &&
                 LAZY_LOAD_PROC(ai, dfi_get_file_type) &&
                 LAZY_LOAD_PROC(ai, dfi_get_indicators) &&
-                LAZY_LOAD_PROC(ai, dfi_get_macro_content) &&
                 LAZY_LOAD_PROC(ai, dfi_get_max_features_count) &&
                 LAZY_LOAD_PROC(ai, dfi_get_path_in_archive) &&
                 LAZY_LOAD_PROC(ai, dfi_get_score) &&
                 LAZY_LOAD_PROC(ai, dfi_get_sha1) &&
                 LAZY_LOAD_PROC(ai, dfi_get_sha256) &&
-                LAZY_LOAD_PROC(ai, dfi_get_telemetry) &&
                 LAZY_LOAD_PROC(ai, dfi_get_verdict) &&
                 LAZY_LOAD_PROC(ai, dfi_get_version) &&
                 LAZY_LOAD_PROC(ai, dfi_init) &&
                 LAZY_LOAD_PROC(ai, dfi_init_scan_arguments) &&
                 LAZY_LOAD_PROC(ai, dfi_is_archive) &&
-                LAZY_LOAD_PROC(ai, dfi_reset_custom_yara_rules) &&
                 LAZY_LOAD_PROC(ai, dfi_scan) &&
-                LAZY_LOAD_PROC(ai, dfi_set_custom_yara_rules) &&
                 LAZY_LOAD_PROC(ai, dfi_set_features) &&
                 LAZY_LOAD_PROC(ai, dfi_set_indicators) &&
-                LAZY_LOAD_PROC(ai, dfi_set_macro_content) &&
                 LAZY_LOAD_PROC(ai, dfi_set_max_scan_depth) &&
                 LAZY_LOAD_PROC(ai, dfi_set_scan_archives) &&
                 LAZY_LOAD_PROC(ai, dfi_set_scan_everything) &&
                 LAZY_LOAD_PROC(ai, dfi_set_stop_scan_threshold)) {
+                LAZY_LOAD_PROC(ai, dfi_get_macro_content);
+                LAZY_LOAD_PROC(ai, dfi_get_telemetry);
+                LAZY_LOAD_PROC(ai, dfi_reset_custom_yara_rules);
+                LAZY_LOAD_PROC(ai, dfi_set_custom_yara_rules);
+                LAZY_LOAD_PROC(ai, dfi_set_macro_content);
                 return true;
             }
             FreeLibrary(reinterpret_cast<HMODULE>(ai));
@@ -399,6 +408,9 @@ namespace PyDfi {
         if (!ai) {
             throw Exception("AI not loaded.");
         }
+        if (!lazy_dfi_get_telemetry) {
+            throw Exception("Method not supported by this version of DFI.");
+        }
         // API is hardcoded to return DFIErrorCode::Success
         (void)lazy_dfi_reset_custom_yara_rules();
     }
@@ -406,6 +418,9 @@ namespace PyDfi {
     void SetCustomYaraRules(const py::bytes& yarc) {
         if (!ai) {
             throw Exception("AI not loaded.");
+        }
+        if (!lazy_dfi_get_telemetry) {
+            throw Exception("Method not supported by this version of DFI.");
         }
         bool isArchive{ 0 };
         std::string strYarc{ yarc };
