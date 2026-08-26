@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21.0)
 project(dfi-scanner
     VERSION "0.1"
     DESCRIPTION "A library and tools for interacting with DFI"
-    HOMEPAGE_URL "https://github.com/SpecterOps/dfi-scanner"
+    HOMEPAGE_URL "https://github.com/EvanMcBroom/dfi-scanner"
     LANGUAGES CXX
 )
 set(CMAKE_CXX_STANDARD 17)
@@ -21,4 +21,4 @@ target_link_libraries(pydfi PRIVATE dfi magic_enum::magic_enum)
 
 add_executable(scan_file)
 target_sources(scan_file PRIVATE examples/scan_file.cpp)
-target_link_libraries(scan_file PRIVATE dfi magic_enum::magic_enum)
+target_link_libraries(scan_file PRIVATE dfi magic_enum::magic_enum nlohmann_json::nlohmann_json)

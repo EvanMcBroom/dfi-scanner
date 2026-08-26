@@ -14,7 +14,13 @@ This repo documents the DFI API to allow it to be used directly instead of using
 
 The private DFI API is exposed by the `SentinelStaticAI.dll` binary that ships with any SentinelOne installation.
 Unlike the Nexus API, the DFI API can be used without a license.
-It can also be used without Internet access as it only uses a self-contained ML model, Yara signatures, and other detections that are packaged into its PE resource.
+It can also be used without Internet access as it only uses a self-contained ML model, Yara signatures, and other detections that are packaged into its PE resources or its `.rdata` section.
+
+The `SentinelStaticAI.dll` binary has two version numbers, a file version and an internal API [semantic version](https://semver.org/).
+Its file version increased to at least `24.x.x.x` before starting over.
+Its API version is queriable via an export starting in version `6.0.0` and is the only reliable method to assess compatibility with this project.
+This project has been tested with API major versions 6 and 7.
+Your mileage may vary with other API versions.
 
 ## Building
 
@@ -22,7 +28,7 @@ The project uses [CMake](https://cmake.org/) to generate and run the build syste
 The project does not rely on any library manager to allow it to be easily built in an offline environment if desired.
 
 ```
-git clone --recurse-submodules https://github.com/SpecterOps/dfi-scanner.git
+git clone --recurse-submodules https://github.com/EvanMcBroom/dfi-scanner.git
 cd dfi-scanner/builds
 cmake .. -A {Win32 | x64}
 cmake --build .
@@ -32,3 +38,17 @@ By default CMake will build a `libdfi32` or `libdfi64` library with equivalent f
 There is a `libdfi.hpp` file that may be used as the SDK for the library.
 The `examples` directory demonstrates how to use the library.
 CMake will also build a `pydfi` Python module to allow for easy access to the API.
+
+## Running
+
+If you have a licensed copy of SentinelOne, the `SentinelStaticAI.dll` binary will be in its installation directory.
+You may use it with the example C program like so:
+
+```bash
+scan_file.exe <path to SentinelStaticAI.dll> <path to file>
+```
+For the Python script, first copy the built `*.pyd` file to the same directory as the script, then you may use it like so:
+
+```bash
+python pyscanner.py <path to SentinelStaticAI.dll> <path to file>
+```
